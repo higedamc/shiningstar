@@ -1,4 +1,4 @@
-# shining_star
+# ShiningStar
 
 A new Flutter project.
 
