@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:nostr/nostr.dart';
+import 'package:shining_star/messageSendPage.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MainApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -29,97 +30,172 @@ class MyApp extends StatelessWidget {
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        // colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const Scaffold(
+        body: NostrWidget(),
+      ),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class NostrWidget extends StatefulWidget {
+  const NostrWidget({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<NostrWidget> createState() => _NostrWidgetState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _NostrWidgetState extends State<NostrWidget> {
+  _NostrWidgetState();
+  final List<Map<String, dynamic>> messages = [
+    {'createdAt': 0, "content": "これが最初のメッセージ"},
+    {'createdAt': 1, "content": "2つ目のメッセージ"},
+    {'createdAt': 2, "content": "これが3つ目だ!"},
+  ];
+  final Image profileImage = const Image(
+    width: 50, // いい感じに大きさ調節しています。
+    height: 50,
+    image: NetworkImage(
+        // 'https://1.bp.blogspot.com/-BnPjHnaxR8Q/YEGP_e4vImI/AAAAAAABdco/2i7s2jl14xUhqtxlR2P3JIsFz76EDZv3gCNcBGAsYHQ/s180-c/buranko_boy_smile.png'),
+        'https://image.nostr.build/33a0fd352b17f70ccb620c85e69a987ac22f2c0f6cb250e48a1aeba58cdbf354.png'),
+  );
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  final channel = WebSocketChannel.connect(Uri.parse('wss://relay.damus.io'));
+
+  bool startAnimationState = false;
+
+  @override
+  void initState() {
+    Request requestWithFilter = Request(generate64RandomHexChars(), [
+      Filter(
+        kinds: [1],
+        limit: 50,
+      )
+    ]);
+    channel.sink.add(requestWithFilter.serialize());
+    channel.stream.listen((payload) {
+      try {
+        final _msg = Message.deserialize(payload);
+        print(payload);
+        if (_msg.type == 'EVENT') {
+          setState(() {
+            messages.add({
+              "createdAt": _msg.message.createdAt,
+              "content": _msg.message.content
+            });
+            messages.sort((a, b) {
+              return b['createdAt'].compareTo(a['createdAt']);
+            });
+          });
+        }
+      } catch (err) {}
+    });
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      setState(() {
+        startAnimationState = true;
+      });
     });
   }
 
+  Widget messageWidget(int index) {
+    return Card(
+      // clipBehavior: Clip.antiAliasWithSaveLayer,
+      // shape: RoundedRectangleBorder(
+      //   borderRadius: BorderRadius.circular(20),
+      // ),
+      color: Colors.white,
+      child: ListTile(
+        leading: Container(
+          height: 50,
+          width: 50,
+          decoration: const BoxDecoration(),
+          child: FittedBox(
+            fit: BoxFit.fill,
+            child: Image.network(
+                'https://image.nostr.build/33a0fd352b17f70ccb620c85e69a987ac22f2c0f6cb250e48a1aeba58cdbf354.png'),
+          ),
+        ),
+        // CircleAvatar(
+        //   backgroundImage: profileImage.image,
+        //   minRadius: 30,
+        //   maxRadius: 40,
+        // ),
+
+        title: Text(
+          messages[index]['content'],
+          maxLines: 4,
+          overflow: TextOverflow.ellipsis,
+          // style: const TextStyle(
+          //   color: Colors.black,
+          //   backgroundColor: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  // Widget messageWidget(int index) {
+  //   return Container(
+  //     decoration: const BoxDecoration(
+  //       border: Border(
+  //         bottom: BorderSide(color: Colors.black12, width: 1),
+  //       ),
+  //     ),
+  //     margin: const EdgeInsets.fromLTRB(10, 0, 10, 0), // 下線の左右に余白を作りたかった
+  //     padding: const EdgeInsets.fromLTRB(0, 10, 0, 10), // いい感じに上下の余白を作ります。
+  //     child: Row(
+  //       crossAxisAlignment: CrossAxisAlignment.start, // 上詰めにする
+  //       children: [
+  //         ClipRRect(
+  //           // プロフィール画像を丸くします。
+  //           borderRadius: BorderRadius.circular(25),
+  //           child: profileImage,
+  //         ),
+  //         Expanded(
+  //           child: Padding(
+  //             padding: const EdgeInsets.only(left: 15),
+  //             child: Column(
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 const Text('吾輩は猫である', // 名前です。
+  //                     style: TextStyle(fontWeight: FontWeight.bold)),
+  //                 Text(
+  //                   messages[index]["content"],
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: const Text('ShiningStar demo')),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        child: ListView.builder(
+          itemCount: messages.length,
+          itemBuilder: (context, index) {
+            return messageWidget(index);
+          },
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => MessageSendPage(channel),
+                fullscreenDialog: true),
+          );
+        },
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
 }
