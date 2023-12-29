@@ -17,7 +17,7 @@ jobs:
       - uses: snow-actions/nostr@v1.7.0
         with:
           relays: ${{ vars.NOSTR_RELAYS }}
-          private-key: ${{ secrets.NOSTR_PRIVATE_KEY }}
+          private-key: ${{ secrets }}
           content: |
             Issue by @${{ github.event.sender.login }}: ${{ github.event.issue.title }}
             ${{ github.event.issue.html_url }} #shootingstar
@@ -32,7 +32,7 @@ jobs:
       - uses: snow-actions/nostr@v1.7.0
         with:
           relays: ${{ vars.NOSTR_RELAYS }}
-          private-key: ${{ secrets.NOSTR_PRIVATE_KEY }}
+          private-key: ${{ secrets }}
           content: |
             PR merged: ${{ github.event.pull_request.title }}
             ${{ github.event.pull_request.html_url }} #shootingstar
@@ -48,7 +48,7 @@ jobs:
       - uses: snow-actions/nostr@v1.7.0
         with:
           relays: ${{ vars.NOSTR_RELAYS }}
-          private-key: ${{ secrets.NOSTR_PRIVATE_KEY }}
+          private-key: ${{ secrets }}
           kind: 30315
           content: |
             #shootingstar ${{ github.event.pull_request.title }}
