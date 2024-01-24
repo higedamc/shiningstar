@@ -34,13 +34,12 @@ class _NostrWidgetState extends State<NostrWidget> {
   final GlobalKey<AnimatedListState> listKey = GlobalKey<AnimatedListState>();
   _NostrWidgetState();
   final List<Map<String, dynamic>> messages = [
-    {'createdAt': 0, "content": "Welcome!"},
+    {'createdAt': 0, "content": "Welcome!", "client": "ShiningStar"},
   ];
   final Image profileImage = const Image(
     width: 50,
     height: 50,
     image: NetworkImage(
-        // 'https://1.bp.blogspot.com/-BnPjHnaxR8Q/YEGP_e4vImI/AAAAAAABdco/2i7s2jl14xUhqtxlR2P3JIsFz76EDZv3gCNcBGAsYHQ/s180-c/buranko_boy_smile.png'),
         'https://image.nostr.build/33a0fd352b17f70ccb620c85e69a987ac22f2c0f6cb250e48a1aeba58cdbf354.png'),
   );
 
@@ -52,20 +51,21 @@ class _NostrWidgetState extends State<NostrWidget> {
   void initState() {
     Request requestWithFilter = Request(generate64RandomHexChars(), [
       Filter(
-        kinds: [1],
+        kinds: [0, 1, 2],
         limit: 50,
       )
     ]);
     channel.sink.add(requestWithFilter.serialize());
     channel.stream.listen((payload) {
       try {
-        final _msg = Message.deserialize(payload);
+        final msg = Message.deserialize(payload);
         print(payload);
-        if (_msg.type == 'EVENT') {
+        if (msg.type == 'EVENT') {
           setState(() {
             var newMessages = ({
-              "createdAt": _msg.message.createdAt,
-              "content": _msg.message.content
+              "createdAt": msg.message.createdAt,
+              "content": msg.message.content,
+              "client": _extractClientName(msg.message.tags)
             });
             // messages.sort((a, b) {
             //   return b['createdAt'].compareTo(a['createdAt']);
@@ -73,9 +73,22 @@ class _NostrWidgetState extends State<NostrWidget> {
             _addNewMessage(newMessages);
           });
         }
-      } catch (err) {}
+      } catch (err) {
+        print(err.toString());
+      }
     });
     super.initState();
+  }
+
+  // クライアント名抽出
+  String _extractClientName(List<dynamic> tags) {
+    for (var tag in tags) {
+      if (tag is List && tag.isNotEmpty && tag[0] == "client") {
+        return tag[1].toString();
+      }
+
+    }
+    return "";
   }
 
   _addNewMessage(Map<String, dynamic> newMessage) {
@@ -85,7 +98,7 @@ class _NostrWidgetState extends State<NostrWidget> {
   }
 
   _buildAnimatedItem(
-      Map<String, dynamic> messag, Animation<double> animation, int index) {
+      Map<String, dynamic> messages, Animation<double> animation, int index) {
     return SizeTransition(
         sizeFactor: animation,
         child: (ListTile(
@@ -99,7 +112,19 @@ class _NostrWidgetState extends State<NostrWidget> {
                   'https://image.nostr.build/33a0fd352b17f70ccb620c85e69a987ac22f2c0f6cb250e48a1aeba58cdbf354.png'),
             ),
           ),
-        )));
+          title: Text(messages['content'],
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.black,
+          ),
+          ),
+          subtitle: Text(messages['client'].toString(),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
+          )),
+        )
+        ));
   }
 
   @override
