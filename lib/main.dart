@@ -47,6 +47,8 @@ class _NostrWidgetState extends State<NostrWidget> {
 
   bool startAnimationState = false;
 
+  Map<String, dynamic> userPictures = {};
+
   @override
   void initState() {
     Request requestWithFilter = Request(generate64RandomHexChars(), [
@@ -61,17 +63,12 @@ class _NostrWidgetState extends State<NostrWidget> {
         final msg = Message.deserialize(payload);
         print(payload);
         if (msg.type == 'EVENT') {
-          setState(() {
-            var newMessages = ({
-              "createdAt": msg.message.createdAt,
-              "content": msg.message.content,
-              "client": _extractClientName(msg.message.tags)
-            });
-            // messages.sort((a, b) {
-            //   return b['createdAt'].compareTo(a['createdAt']);
-            // });
-            _addNewMessage(newMessages);
+          var newMessages = ({
+            "createdAt": msg.message.createdAt,
+            "content": msg.message.content,
+            "client": _extractClientName(msg.message.tags),
           });
+          _addNewMessage(newMessages);
         }
       } catch (err) {
         print(err.toString());
@@ -86,7 +83,6 @@ class _NostrWidgetState extends State<NostrWidget> {
       if (tag is List && tag.isNotEmpty && tag[0] == "client") {
         return tag[1].toString();
       }
-
     }
     return "";
   }
@@ -99,6 +95,8 @@ class _NostrWidgetState extends State<NostrWidget> {
 
   _buildAnimatedItem(
       Map<String, dynamic> messages, Animation<double> animation, int index) {
+    var profileImageUrl = userPictures['nip05'.toString()] ??
+        'https://image.nostr.build/33a0fd352b17f70ccb620c85e69a987ac22f2c0f6cb250e48a1aeba58cdbf354.png';
     return SizeTransition(
         sizeFactor: animation,
         child: (ListTile(
@@ -108,27 +106,28 @@ class _NostrWidgetState extends State<NostrWidget> {
             decoration: const BoxDecoration(),
             child: FittedBox(
               fit: BoxFit.fill,
-              child: Image.network(
-                  'https://image.nostr.build/33a0fd352b17f70ccb620c85e69a987ac22f2c0f6cb250e48a1aeba58cdbf354.png'),
+              child: Image.network(profileImageUrl.toString()),
             ),
           ),
-          title: Text(messages['content'],
-          style: const TextStyle(
-            fontSize: 16,
-            color: Colors.black,
-          ),
+          title: Text(
+            messages['content'],
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black,
+            ),
           ),
           subtitle: Text(messages['client'].toString(),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
-          )),
-        )
-        ));
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              )),
+        )));
   }
 
   @override
   Widget build(BuildContext context) {
+    TextEditingController _messageController = TextEditingController();
+
     return Scaffold(
       appBar: AppBar(title: const Text('ShiningStar demo')),
       body: Card(
@@ -141,12 +140,36 @@ class _NostrWidgetState extends State<NostrWidget> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          null;
-        },
-        child: const Icon(Icons.add),
-      ),
+      bottomNavigationBar: BottomAppBar(
+          child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: const InputDecoration(
+                        hintText: 'Wassup, dude?',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.send),
+                    onPressed: () {
+                      //TODO: send post
+                      // if (_messageController.text.isNotEmpty) {
+                      //   final message = Message(
+                      //     generate64RandomHexChars(),
+                      //     _messageController.text,
+                      //     [Tag("client", "ShiningStar")],
+                      //   );
+                      //   channel.sink.add(message.serialize());
+                      //   _messageController.clear();}
+                    },
+                  ),
+                ],
+              ))),
     );
   }
 }
